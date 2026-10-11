@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Resources Management Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        theme: {
+                            header: 'var(--color-header)',
+                            headerText: 'var(--color-header-text)',
+                            accent: 'var(--color-accent)',
+                            accentHover: 'var(--color-accent-hover)',
+                            bg: 'var(--color-bg)',
+                            cardBg: 'var(--color-card-bg)',
+                            text: 'var(--color-text)',
+                            border: 'var(--color-border)',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --color-header: #1e3a8a;
+            --color-header-text: #ffffff;
+            --color-accent: #2563eb;
+            --color-accent-hover: #1d4ed8;
+            --color-bg: #f8fafc;
+            --color-card-bg: #ffffff;
+            --color-text: #1e293b;
+            --color-border: #e2e8f0;
+        }
+        .theme-emerald {
+            --color-header: #064e3b; --color-header-text: #ffffff; --color-accent: #059669; --color-accent-hover: #047857; --color-bg: #f0fdf4; --color-card-bg: #ffffff; --color-text: #064e3b; --color-border: #bbf7d0;
+        }
+        .theme-slate {
+            --color-header: #0f172a; --color-header-text: #ffffff; --color-accent: #475569; --color-accent-hover: #334155; --color-bg: #f1f5f9; --color-card-bg: #ffffff; --color-text: #0f172a; --color-border: #cbd5e1;
+        }
+        .theme-purple {
+            --color-header: #3b0764; --color-header-text: #ffffff; --color-accent: #7c3aed; --color-accent-hover: #6d28d9; --color-bg: #faf5ff; --color-card-bg: #ffffff; --color-text: #3b0764; --color-border: #e9d5ff;
+        }
+        .theme-dark {
+            --color-header: #0f172a; --color-header-text: #38bdf8; --color-accent: #0284c7; --color-accent-hover: #0369a1; --color-bg: #020617; --color-card-bg: #0f172a; --color-text: #f1f5f9; --color-border: #1e293b;
+        }
+        /* Custom scrollbar for scrollable dropdown options */
+        select option {
+            max-height: 120px;
+        }
+    </style>
+</head>
+<body id="appBody" class="bg-theme-bg text-theme-text font-sans antialiased min-h-screen transition-colors duration-200 flex flex-col justify-between">
+
+    <div>
+        <header class="bg-theme-header text-theme-headerText shadow-md transition-colors duration-200">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col lg:flex-row justify-between items-center gap-4">
+                <div class="flex items-center space-x-3">
+                    <i data-lucide="waves" class="w-8 h-8 text-blue-300"></i>
+                    <div>
+                        <h1 class="text-xl font-bold">Water Resources Management Dashboard</h1>
+                        <p class="text-xs opacity-80">Weekly Rainfall, Reservoir Storage & River Basin Reporting</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center space-x-1 bg-black/20 px-2.5 py-1.5 rounded-lg border border-white/20 text-xs">
+                        <i data-lucide="palette" class="w-4 h-4"></i>
+                        <select id="themeSelector" onchange="changeTheme(this.value)" class="bg-transparent text-white font-medium outline-none cursor-pointer">
+                            <option value="navy" class="text-slate-800">Theme: Navy / Blue</option>
+                            <option value="emerald" class="text-slate-800">Theme: Emerald / Teal</option>
+                            <option value="slate" class="text-slate-800">Theme: Slate</option>
+                            <option value="purple" class="text-slate-800">Theme: Deep Purple</option>
+                            <option value="dark" class="text-slate-800">Theme: Warm Dark Mode</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center space-x-1 bg-black/20 px-2.5 py-1.5 rounded-lg border border-white/20 text-xs">
+                        <span class="opacity-80">Week:</span>
+                        <select id="weekSelector" onchange="switchWeek(this.value)" class="bg-transparent text-white font-semibold outline-none cursor-pointer max-h-48 overflow-y-auto">
+                        </select>
+                    </div>
+
+                    <button onclick="openEditWeekModal()" class="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center space-x-1 border border-white/20 transition">
+                        <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                        <span>Rename Week</span>
+                    </button>
+
+                    <button onclick="deleteCurrentWeek()" class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center space-x-1 border border-rose-400/30 transition" title="Delete current active week">
+                        <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                        <span>Delete Week</span>
+                    </button>
+
+                    <button onclick="openNewWeekModal()" class="bg-theme-accent hover:bg-theme-accentHover text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1 shadow-sm transition">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>Add New Week</span>
+                    </button>
+
+                    <button onclick="resetToExcelData()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1 shadow-sm transition" title="Force reload exact dataset from file">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        <span>Reload File Data</span>
+                    </button>
+
+                    <button onclick="saveDashboardFile()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1 shadow-sm transition">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        <span>Save File</span>
+                    </button>
+
+                    <label class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1 shadow-sm transition cursor-pointer">
+                        <i data-lucide="folder-open" class="w-4 h-4"></i>
+                        <span>Open File</span>
+                        <input type="file" id="importFile" accept=".json" onchange="loadDashboardFile(event)" class="hidden">
+                    </label>
+
+                    <button onclick="exportCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1 shadow-sm transition">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+            <!-- KPI Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-theme-cardBg p-4 rounded-xl shadow-sm border border-theme-border flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold opacity-60 uppercase">Telangana Rainfall</p>
+                        <h3 id="kpiTgRain" class="text-2xl font-bold mt-1">0.0 mm</h3>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <span id="kpiTgDep" class="text-xs font-semibold">0% Dep</span>
+                            <span id="kpiTgBadge" class="px-2 py-0.5 text-[10px] rounded-full font-bold">Normal</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-blue-500/10 text-blue-500 rounded-lg"><i data-lucide="cloud-rain" class="w-6 h-6"></i></div>
+                </div>
+
+                <div class="bg-theme-cardBg p-4 rounded-xl shadow-sm border border-theme-border flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold opacity-60 uppercase">Andhra Pradesh Rainfall</p>
+                        <h3 id="kpiApRain" class="text-2xl font-bold mt-1">0.0 mm</h3>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <span id="kpiApDep" class="text-xs font-semibold">0% Dep</span>
+                            <span id="kpiApBadge" class="px-2 py-0.5 text-[10px] rounded-full font-bold">Normal</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-indigo-500/10 text-indigo-500 rounded-lg"><i data-lucide="cloud-drizzle" class="w-6 h-6"></i></div>
+                </div>
+
+                <div class="bg-theme-cardBg p-4 rounded-xl shadow-sm border border-theme-border flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold opacity-60 uppercase">Total Reservoir Storage</p>
+                        <h3 id="kpiStorage" class="text-2xl font-bold mt-1">0.0 TMC</h3>
+                        <p id="kpiStorageSub" class="text-xs opacity-70 font-medium mt-1">Out of 1,107.51 TMC (0%)</p>
+                    </div>
+                    <div class="p-3 bg-emerald-500/10 text-emerald-500 rounded-lg"><i data-lucide="database" class="w-6 h-6"></i></div>
+                </div>
+
+                <div class="bg-theme-cardBg p-4 rounded-xl shadow-sm border border-theme-border flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold opacity-60 uppercase">Current Report Period</p>
+                        <h3 id="kpiWeekLabel" class="text-lg font-bold mt-1 truncate max-w-[170px]">Loading...</h3>
+                        <p class="text-xs text-emerald-500 font-medium mt-1 flex items-center gap-1">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i><span>Auto-Saved locally</span>
+                        </p>
+                    </div>
+                    <div class="p-3 bg-purple-500/10 text-purple-500 rounded-lg"><i data-lucide="calendar" class="w-6 h-6"></i></div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex border-b border-theme-border space-x-6 text-sm font-semibold">
+                <button onclick="switchTab('overview')" id="tab-overview" class="pb-3 border-b-2 border-theme-accent text-theme-accent flex items-center space-x-2">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i><span>Analytics & Charts</span>
+                </button>
+                <button onclick="switchTab('rainfall')" id="tab-rainfall" class="pb-3 border-b-2 border-transparent opacity-70 hover:opacity-100 flex items-center space-x-2">
+                    <i data-lucide="cloud-rain" class="w-4 h-4"></i><span>State & District Rainfall</span>
+                </button>
+                <button onclick="switchTab('reservoirs')" id="tab-reservoirs" class="pb-3 border-b-2 border-transparent opacity-70 hover:opacity-100 flex items-center space-x-2">
+                    <i data-lucide="database" class="w-4 h-4"></i><span>Reservoir Storage Levels</span>
+                </button>
+                <button onclick="switchTab('basins')" id="tab-basins" class="pb-3 border-b-2 border-transparent opacity-70 hover:opacity-100 flex items-center space-x-2">
+                    <i data-lucide="git-merge" class="w-4 h-4"></i><span>River Basins</span>
+                </button>
+            </div>
+
+            <!-- Section 1: Charts -->
+            <div id="section-overview" class="space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-theme-cardBg p-5 rounded-xl shadow-sm border border-theme-border">
+                        <h3 class="text-sm font-bold mb-4 flex items-center justify-between">
+                            <span>Major Reservoir Storage Fill (%)</span>
+                            <span class="text-xs opacity-60 activeWeekText font-normal">Week View</span>
+                        </h3>
+                        <div class="h-64"><canvas id="reservoirChart"></canvas></div>
+                    </div>
+                    <div class="bg-theme-cardBg p-5 rounded-xl shadow-sm border border-theme-border">
+                        <h3 class="text-sm font-bold mb-4 flex items-center justify-between">
+                            <span>District Rainfall (mm) & Departure Curve (%)</span>
+                            <span class="text-xs opacity-60 activeWeekText font-normal">Week View</span>
+                        </h3>
+                        <div class="h-64"><canvas id="rainfallChart"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- Custom Period & Multi-Location Trend Comparison Chart -->
+                <div class="bg-theme-cardBg p-5 rounded-xl shadow-sm border border-theme-border space-y-4">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pb-3 border-b border-theme-border">
+                        <div>
+                            <h3 class="text-sm font-bold flex items-center gap-2">
+                                <i data-lucide="trending-up" class="w-4 h-4 text-theme-accent"></i>
+                                <span>Multi-Week Rainfall Trend Analysis</span>
+                            </h3>
+                            <p class="text-xs opacity-70 mt-0.5">Compare rainfall patterns across selected weeks and locations over time.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 text-xs">
+                            <div>
+                                <label class="opacity-70 mr-1 font-semibold">Metric:</label>
+                                <select id="customMetricSelect" onchange="updateCustomChart()" class="border border-theme-border bg-theme-cardBg rounded px-2 py-1 font-semibold outline-none text-theme-text">
+                                    <option value="actual">Actual Rainfall (mm)</option>
+                                    <option value="departure">Departure (% Dep)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="opacity-70 mr-1">From:</label>
+                                <select id="customFromWeek" onchange="updateCustomChart()" class="border border-theme-border bg-theme-cardBg rounded px-2 py-1 font-semibold outline-none text-theme-text max-h-36 overflow-y-auto"></select>
+                            </div>
+                            <div>
+                                <label class="opacity-70 mr-1">To:</label>
+                                <select id="customToWeek" onchange="updateCustomChart()" class="border border-theme-border bg-theme-cardBg rounded px-2 py-1 font-semibold outline-none text-theme-text max-h-36 overflow-y-auto"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Location Selector Checkboxes Container -->
+                    <div>
+                        <label class="block text-xs font-semibold opacity-70 mb-1.5">Select Locations to Include in Trend Graph:</label>
+                        <div id="locationCheckboxes" class="flex flex-wrap gap-3 max-h-28 overflow-y-auto p-2 border border-theme-border rounded-lg bg-black/5 text-xs">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Chart Canvas -->
+                    <div class="h-72 pt-2"><canvas id="customRainfallChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Section 2: Rainfall -->
+            <div id="section-rainfall" class="hidden space-y-6">
+                <div class="bg-theme-cardBg rounded-xl shadow-sm border border-theme-border overflow-hidden">
+                    <div class="p-4 border-b border-theme-border flex justify-between items-center bg-black/5">
+                        <h3 class="font-bold text-sm flex items-center gap-2">
+                            <i data-lucide="map-pin" class="w-4 h-4 text-blue-500"></i>
+                            <span>State Level Weekly Rainfall Summary</span>
+                        </h3>
+                        <button onclick="addStateRow()" class="bg-black/10 hover:bg-black/20 text-xs px-2.5 py-1 rounded font-semibold flex items-center space-x-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i><span>Add State</span>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-black/5 uppercase text-xs opacity-70">
+                                    <th class="p-3 font-semibold">State Name</th>
+                                    <th class="p-3 font-semibold">Actual (mm)</th>
+                                    <th class="p-3 font-semibold">Normal (mm)</th>
+                                    <th class="p-3 font-semibold">Departure (%)</th>
+                                    <th class="p-3 font-semibold">Category Status</th>
+                                    <th class="p-3 font-semibold text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stateRainfallTableBody" class="divide-y divide-theme-border"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-theme-cardBg rounded-xl shadow-sm border border-theme-border overflow-hidden">
+                    <div class="p-4 border-b border-theme-border flex justify-between items-center bg-black/5">
+                        <h3 class="font-bold text-sm flex items-center gap-2">
+                            <i data-lucide="list" class="w-4 h-4 text-emerald-500"></i>
+                            <span>District Rainfall Report</span>
+                        </h3>
+                        <button onclick="addDistrictRow()" class="bg-black/10 hover:bg-black/20 text-xs px-2.5 py-1 rounded font-semibold flex items-center space-x-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i><span>Add District Row</span>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-black/5 uppercase text-xs opacity-70">
+                                    <th class="p-3 font-semibold">District Name</th>
+                                    <th class="p-3 font-semibold">Actual (mm)</th>
+                                    <th class="p-3 font-semibold">Normal (mm)</th>
+                                    <th class="p-3 font-semibold">Departure (%)</th>
+                                    <th class="p-3 font-semibold">Status</th>
+                                    <th class="p-3 font-semibold text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="districtRainfallTableBody" class="divide-y divide-theme-border"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Reservoirs -->
+            <div id="section-reservoirs" class="hidden bg-theme-cardBg rounded-xl shadow-sm border border-theme-border overflow-hidden">
+                <div class="p-4 border-b border-theme-border flex justify-between items-center bg-black/5">
+                    <h3 class="font-bold text-sm">Major Reservoir Storage & Command Area Served</h3>
+                    <button onclick="addReservoirRow()" class="bg-black/10 hover:bg-black/20 text-xs px-2.5 py-1 rounded font-semibold flex items-center space-x-1">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i><span>Add Reservoir</span>
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-black/5 uppercase text-xs opacity-70">
+                                <th class="p-3 font-semibold">Reservoir Name</th>
+                                <th class="p-3 font-semibold">Basin</th>
+                                <th class="p-3 font-semibold">Command Area / Region Served</th>
+                                <th class="p-3 font-semibold">Capacity (TMC)</th>
+                                <th class="p-3 font-semibold">Level (ft)</th>
+                                <th class="p-3 font-semibold">Storage (TMC)</th>
+                                <th class="p-3 font-semibold">Storage %</th>
+                                <th class="p-3 font-semibold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reservoirTableBody" class="divide-y divide-theme-border"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Section 4: Basins -->
+            <div id="section-basins" class="hidden bg-theme-cardBg rounded-xl shadow-sm border border-theme-border overflow-hidden">
+                <div class="p-4 border-b border-theme-border flex justify-between items-center bg-black/5">
+                    <div>
+                        <h3 class="font-bold text-sm">River Basin Aggregate Storage Summary</h3>
+                        <p class="text-[11px] opacity-70">Capacity Status: Satisfactory (≥60%), Moderate (40-59%), Deficient (20-39%), Critical (&lt;20%)</p>
+                    </div>
+                    <button onclick="addBasinRow()" class="bg-black/10 hover:bg-black/20 text-xs px-2.5 py-1 rounded font-semibold flex items-center space-x-1">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i><span>Add Basin</span>
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-black/5 uppercase text-xs opacity-70">
+                                <th class="p-3 font-semibold">River Basin</th>
+                                <th class="p-3 font-semibold">Total Capacity (TMC)</th>
+                                <th class="p-3 font-semibold">Last Year Storage (TMC)</th>
+                                <th class="p-3 font-semibold">Current Storage (TMC)</th>
+                                <th class="p-3 font-semibold">Storage Fill %</th>
+                                <th class="p-3 font-semibold">Basin Status</th>
+                                <th class="p-3 font-semibold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="basinTableBody" class="divide-y divide-theme-border"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl w-full mx-auto px-4 py-6 text-right text-xs opacity-70 border-t border-theme-border mt-12">
+        Maintained by Nikhil Syam
+    </footer>
+
+    <!-- Modals -->
+    <div id="newWeekModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-theme-cardBg rounded-xl shadow-xl max-w-md w-full p-6 space-y-4 border border-theme-border text-theme-text">
+            <div class="flex justify-between items-center border-b border-theme-border pb-3">
+                <h3 class="font-bold text-base">Create New Weekly Report</h3>
+                <button onclick="closeNewWeekModal()" class="opacity-50 hover:opacity-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold opacity-70 mb-1">Week Label</label>
+                    <input type="text" id="newWeekNameInput" placeholder="e.g., Oct 08 - 14, 2026" class="w-full border border-theme-border rounded-lg p-2 bg-transparent outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold opacity-70 mb-1">Copy Data Structure From</label>
+                    <select id="copyFromWeekSelect" class="w-full border border-theme-border rounded-lg p-2 bg-theme-cardBg outline-none text-theme-text"></select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2 border-t border-theme-border">
+                <button onclick="closeNewWeekModal()" class="px-4 py-2 text-xs font-semibold opacity-70">Cancel</button>
+                <button onclick="createNewWeekData()" class="px-4 py-2 text-xs font-semibold bg-theme-accent text-white rounded-lg">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editWeekModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-theme-cardBg rounded-xl shadow-xl max-w-md w-full p-6 space-y-4 border border-theme-border text-theme-text">
+            <div class="flex justify-between items-center border-b border-theme-border pb-3">
+                <h3 class="font-bold text-base">Rename Current Week</h3>
+                <button onclick="closeEditWeekModal()" class="opacity-50 hover:opacity-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="space-y-3 text-sm">
+                <label class="block text-xs font-semibold opacity-70 mb-1">Weekly Report Label</label>
+                <input type="text" id="editWeekNameInput" class="w-full border border-theme-border rounded-lg p-2 bg-transparent outline-none">
+            </div>
+            <div class="flex justify-end space-x-2 pt-2 border-t border-theme-border">
+                <button onclick="closeEditWeekModal()" class="px-4 py-2 text-xs font-semibold opacity-70">Cancel</button>
+                <button onclick="saveWeekName()" class="px-4 py-2 text-xs font-semibold bg-theme-accent text-white rounded-lg">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const rawExcelDataset = {
+            "week_30_07_2026": {
+                "label": "30-07 to 05-08-2026",
+                "stateRainfall": [
+                    { "state": "Telangana", "actual": 82.5, "normal": 56.1 },
+                    { "state": "Andhra Pradesh", "actual": 23.0, "normal": 31.2 }
+                ],
+                "districtRainfall": [
+                    { "location": "B Kothagudem", "actual": 66.9, "normal": 80.5 },
+                    { "location": "Mulugu", "actual": 118.3, "normal": 92.0 },
+                    { "location": "J Gadwal", "actual": 42.0, "normal": 23.5 },
+                    { "location": "ASR", "actual": 40.5, "normal": 74.6 },
+                    { "location": "Guntur", "actual": 37.0, "normal": 39.3 },
+                    { "location": "Krishna", "actual": 17.4, "normal": 45.3 },
+                    { "location": "Prakasam", "actual": 14.3, "normal": 19.2 },
+                    { "location": "Kurnool", "actual": 28.3, "normal": 24.1 }
+                ],
+                "reservoirs": [
+                    { "name": "Almatti", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 129.72, "level": 1702.33, "storage": 119.27 },
+                    { "name": "Jurala", "basin": "Krishna", "region": "Jogulamba Gadwal (Pallepadu)", "capacity": 9.66, "level": 1041.24, "storage": 7.41 },
+                    { "name": "Tungabhadra", "basin": "Krishna", "region": "Raichur & Kurnool", "capacity": 105.79, "level": 1619.42, "storage": 59.72 },
+                    { "name": "Srisailam", "basin": "Krishna", "region": "Rayalaseema", "capacity": 215.81, "level": 863.9, "storage": 118.62 },
+                    { "name": "Nagarjuna Sagar", "basin": "Krishna", "region": "Guntur, Prakasam & Khammam", "capacity": 312.05, "level": 513.0, "storage": 136.82 },
+                    { "name": "Sri Ram Sagar", "basin": "Godavari", "region": "Warangal, Jagitial & Khammam (CP, DV, WZ)", "capacity": 80.5, "level": 1076.4, "storage": 36.08 }
+                ],
+                "basins": [
+                    { "name": "Godavari Basin", "capacity": 26.74, "ly": "17.00", "current": 18.0 },
+                    { "name": "Krishna Basin", "capacity": 695.5, "ly": "630.00", "current": 340.0 }
+                ]
+            },
+            "week_06_08_2026": {
+                "label": "06-08 to 12-08-2026",
+                "stateRainfall": [
+                    { "state": "Telangana", "actual": 32.3, "normal": 53.9 },
+                    { "state": "Andhra Pradesh", "actual": 19.7, "normal": 31.6 }
+                ],
+                "districtRainfall": [
+                    { "location": "B Kothagudem", "actual": 23.8, "normal": 77.3 },
+                    { "location": "Mulugu", "actual": 25.1, "normal": 77.3 },
+                    { "location": "J Gadwal", "actual": 5.4, "normal": 23.3 },
+                    { "location": "ASR", "actual": 12.3, "normal": 10.0 },
+                    { "location": "Guntur", "actual": 3.6, "normal": 8.5 },
+                    { "location": "Krishna", "actual": 2.1, "normal": 5.3 },
+                    { "location": "Prakasam", "actual": 0.0, "normal": 2.7 },
+                    { "location": "Kurnool", "actual": 0.0, "normal": 2.8 }
+                ],
+                "reservoirs": [
+                    { "name": "Almatti", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 129.72, "level": 1704.0, "storage": 124.18 },
+                    { "name": "Jurala", "basin": "Krishna", "region": "Jogulamba Gadwal (Pallepadu)", "capacity": 9.66, "level": 1043.64, "storage": 8.81 },
+                    { "name": "Tungabhadra", "basin": "Krishna", "region": "Raichur & Kurnool", "capacity": 105.79, "level": 1627.61, "storage": 85.36 },
+                    { "name": "Srisailam", "basin": "Krishna", "region": "Rayalaseema", "capacity": 215.81, "level": 878.9, "storage": 182.61 },
+                    { "name": "Nagarjuna Sagar", "basin": "Krishna", "region": "Guntur, Prakasam & Khammam", "capacity": 312.05, "level": 520.1, "storage": 149.46 },
+                    { "name": "Sri Ram Sagar", "basin": "Godavari", "region": "Warangal, Jagitial & Khammam (CP, DV, WZ)", "capacity": 80.5, "level": 1079.4, "storage": 43.37 }
+                ],
+                "basins": [{ "name": "Godavari Basin", "capacity": 26.74, "ly": "16.50", "current": 18.2 }]
+            },
+            "week_13_08_2026": {
+                "label": "13-08 to 19-08-2026",
+                "stateRainfall": [
+                    { "state": "Telangana", "actual": 17.3, "normal": 48.1 },
+                    { "state": "Andhra Pradesh", "actual": 9.8, "normal": 31.4 }
+                ],
+                "districtRainfall": [
+                    { "location": "B Kothagudem", "actual": 35.8, "normal": 66.0 },
+                    { "location": "Mulugu", "actual": 25.9, "normal": 72.3 },
+                    { "location": "J Gadwal", "actual": 9.2, "normal": 25.1 },
+                    { "location": "ASR", "actual": 45.7, "normal": 63.7 },
+                    { "location": "Guntur", "actual": 7.2, "normal": 45.8 },
+                    { "location": "Krishna", "actual": 11.0, "normal": 45.0 },
+                    { "location": "Prakasam", "actual": 2.7, "normal": 18.7 },
+                    { "location": "Kurnool", "actual": 8.8, "normal": 20.1 }
+                ],
+                "reservoirs": [
+                    { "name": "Almatti", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 129.72, "level": 1704.59, "storage": 127.45 },
+                    { "name": "Jurala", "basin": "Krishna", "region": "Jogulamba Gadwal (Pallepadu)", "capacity": 9.66, "level": 1044.09, "storage": 9.09 },
+                    { "name": "Tungabhadra", "basin": "Krishna", "region": "Raichur & Kurnool", "capacity": 105.79, "level": 1630.03, "storage": 94.17 },
+                    { "name": "Srisailam", "basin": "Krishna", "region": "Rayalaseema", "capacity": 215.81, "level": 875.5, "storage": 165.92 },
+                    { "name": "Nagarjuna Sagar", "basin": "Krishna", "region": "Guntur, Prakasam & Khammam", "capacity": 312.05, "level": 529.1, "storage": 166.39 },
+                    { "name": "Sri Ram Sagar", "basin": "Godavari", "region": "Warangal, Jagitial & Khammam (CP, DV, WZ)", "capacity": 80.5, "level": 1079.7, "storage": 44.27 }
+                ],
+                "basins": [{ "name": "Godavari Basin", "capacity": 26.74, "ly": "16.00", "current": 18.5 }]
+            },
+            "week_20_08_2026": {
+                "label": "20-08 to 26-08-2026",
+                "stateRainfall": [
+                    { "state": "Telangana", "actual": 33.9, "normal": 49.6 },
+                    { "state": "Andhra Pradesh", "actual": 17.5, "normal": 35.5 }
+                ],
+                "districtRainfall": [
+                    { "location": "B Kothagudem", "actual": 17.2, "normal": 61.5 },
+                    { "location": "Mulugu", "actual": 54.3, "normal": 61.3 },
+                    { "location": "J Gadwal", "actual": 3.0, "normal": 30.8 },
+                    { "location": "ASR", "actual": 43.2, "normal": 47.4 },
+                    { "location": "Guntur", "actual": 21.4, "normal": 41.0 },
+                    { "location": "Krishna", "actual": 23.6, "normal": 39.6 },
+                    { "location": "Prakasam", "actual": 6.1, "normal": 30.0 },
+                    { "location": "Kurnool", "actual": 9.5, "normal": 29.0 }
+                ],
+                "reservoirs": [
+                    { "name": "Almatti", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 129.72, "level": 1704.63, "storage": 127.67 },
+                    { "name": "Jurala", "basin": "Krishna", "region": "Jogulamba Gadwal (Pallepadu)", "capacity": 9.66, "level": 1044.36, "storage": 9.23 },
+                    { "name": "Tungabhadra", "basin": "Krishna", "region": "Raichur & Kurnool", "capacity": 105.79, "level": 1630.25, "storage": 95.01 },
+                    { "name": "Srisailam", "basin": "Krishna", "region": "Rayalaseema", "capacity": 215.81, "level": 874.8, "storage": 162.82 },
+                    { "name": "Nagarjuna Sagar", "basin": "Krishna", "region": "Guntur, Prakasam & Khammam", "capacity": 312.05, "level": 536.2, "storage": 180.5 },
+                    { "name": "Sri Ram Sagar", "basin": "Godavari", "region": "Warangal, Jagitial & Khammam (CP, DV, WZ)", "capacity": 80.5, "level": 1079.9, "storage": 44.71 }
+                ],
+                "basins": [{ "name": "Godavari Basin", "capacity": 26.74, "ly": "16.00", "current": 18.8 }]
+            },
+            "week_27_08_2026": {
+                "label": "27-08 to 02-09-2026",
+                "stateRainfall": [
+                    { "state": "Telangana", "actual": 10.1, "normal": 44.2 },
+                    { "state": "Andhra Pradesh", "actual": 3.6, "normal": 31.9 }
+                ],
+                "districtRainfall": [
+                    { "location": "B Kothagudem", "actual": 10.1, "normal": 52.1 },
+                    { "location": "Mulugu", "actual": 10.4, "normal": 56.3 },
+                    { "location": "J Gadwal", "actual": 1.1, "normal": 29.4 },
+                    { "location": "ASR", "actual": 5.3, "normal": 55.1 },
+                    { "location": "Guntur", "actual": 5.6, "normal": 31.0 },
+                    { "location": "Krishna", "actual": 2.5, "normal": 33.2 },
+                    { "location": "Prakasam", "actual": 1.1, "normal": 22.3 },
+                    { "location": "Kurnool", "actual": 1.3, "normal": 31.0 }
+                ],
+                "reservoirs": [
+                    { "name": "Almatti", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 129.72, "level": 1704.66, "storage": 127.84 },
+                    { "name": "Jurala", "basin": "Krishna", "region": "Jogulamba Gadwal (Pallepadu)", "capacity": 9.66, "level": 1044.62, "storage": 9.42 },
+                    { "name": "Tungabhadra", "basin": "Krishna", "region": "Raichur & Kurnool", "capacity": 105.79, "level": 1630.41, "storage": 95.62 },
+                    { "name": "Srisailam", "basin": "Krishna", "region": "Rayalaseema", "capacity": 215.81, "level": 871.3, "storage": 147.28 },
+                    { "name": "Nagarjuna Sagar", "basin": "Krishna", "region": "Guntur, Prakasam & Khammam", "capacity": 312.05, "level": 535.9, "storage": 179.89 },
+                    { "name": "Sri Ram Sagar", "basin": "Godavari", "region": "Warangal, Jagitial & Khammam (CP, DV, WZ)", "capacity": 80.5, "level": 1080.0, "storage": 44.94 }
+                ],
+                "basins": [{ "name": "Godavari Basin", "capacity": 26.74, "ly": "17.00", "current": 19.5 }]
+            },
+            "week_03_09_2026": {
+                "label": "03-09 to 09-09-2026",
+                "stateRainfall": [
+                    { "state": "Telangana", "actual": 10.4, "normal": 35.5 },
+                    { "state": "Andhra Pradesh", "actual": 12.9, "normal": 29.9 }
+                ],
+                "districtRainfall": [
+                    { "location": "B Kothagudem", "actual": 1.1, "normal": 3.8 },
+                    { "location": "Mulugu", "actual": 0.0, "normal": 3.2 },
+                    { "location": "J Gadwal", "actual": 2.8, "normal": 2.2 },
+                    { "location": "ASR", "actual": 0.5, "normal": 52.0 },
+                    { "location": "Guntur", "actual": 36.5, "normal": 31.8 },
+                    { "location": "Krishna", "actual": 43.4, "normal": 37.5 },
+                    { "location": "Prakasam", "actual": 11.2, "normal": 21.5 },
+                    { "location": "Kurnool", "actual": 7.8, "normal": 24.5 }
+                ],
+                "reservoirs": [
+                    { "name": "Almatti", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 129.72, "level": 1704.53, "storage": 127.12 },
+                    { "name": "Jurala", "basin": "Krishna", "region": "Jogulamba Gadwal (Pallepadu)", "capacity": 9.66, "level": 1044.39, "storage": 9.28 },
+                    { "name": "Tungabhadra", "basin": "Krishna", "region": "Raichur & Kurnool", "capacity": 105.79, "level": 1629.32, "storage": 91.53 },
+                    { "name": "Srisailam", "basin": "Krishna", "region": "Rayalaseema", "capacity": 215.81, "level": 867.0, "storage": 129.78 },
+                    { "name": "Nagarjuna Sagar", "basin": "Krishna", "region": "Guntur, Prakasam & Khammam", "capacity": 312.05, "level": 535.0, "storage": 178.07 },
+                    { "name": "Sri Ram Sagar", "basin": "Godavari", "region": "Warangal, Jagitial & Khammam (CP, DV, WZ)", "capacity": 80.5, "level": 1080.3, "storage": 45.76 }
+                ],
+                "basins": [{ "name": "Godavari Basin", "capacity": 26.74, "ly": "17.00", "current": 20.0 }]
+            },
+            "week_10_09_2026": {
+                "label": "10-09 to 16-09-2026",
+                "stateRainfall": [
+                    { "state": "Telangana", "actual": 43.5, "normal": 35.5 },
+                    { "state": "Andhra Pradesh", "actual": 27.8, "normal": 33.8 }
+                ],
+                "districtRainfall": [
+                    { "location": "B Kothagudem", "actual": 66.9, "normal": 43.0 },
+                    { "location": "Mulugu", "actual": 59.0, "normal": 43.6 },
+                    { "location": "J Gadwal", "actual": 0.2, "normal": 28.4 },
+                    { "location": "ASR", "actual": 63.5, "normal": 50.2 },
+                    { "location": "Guntur", "actual": 74.9, "normal": 29.4 },
+                    { "location": "Krishna", "actual": 36.1, "normal": 32.6 },
+                    { "location": "Prakasam", "actual": 13.6, "normal": 22.8 },
+                    { "location": "Kurnool", "actual": 0.0, "normal": 30.7 }
+                ],
+                "reservoirs": [
+                    { "name": "Almatti", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 129.72, "level": 1704.66, "storage": 127.84 },
+                    { "name": "Jurala", "basin": "Krishna", "region": "Jogulamba Gadwal (Pallepadu)", "capacity": 9.66, "level": 1044.62, "storage": 9.42 },
+                    { "name": "Tungabhadra", "basin": "Krishna", "region": "Raichur & Kurnool", "capacity": 105.79, "level": 1630.41, "storage": 95.62 },
+                    { "name": "Srisailam", "basin": "Krishna", "region": "Rayalaseema", "capacity": 215.81, "level": 871.3, "storage": 147.28 },
+                    { "name": "Nagarjuna Sagar", "basin": "Krishna", "region": "Guntur, Prakasam & Khammam", "capacity": 312.05, "level": 535.9, "storage": 179.89 },
+                    { "name": "Sri Ram Sagar", "basin": "Godavari", "region": "Warangal, Jagitial & Khammam (CP, DV, WZ)", "capacity": 80.5, "level": 1080.0, "storage": 44.94 }
+                ],
+                "basins": [{ "name": "Godavari Basin", "capacity": 26.74, "ly": "18.00", "current": 21.0 }]
+            },
+            "week_17_09_2026": {
+                "label": "17-09 to 23-09-2026",
+                "stateRainfall": [
+                    { "state": "Telangana", "actual": 31.8, "normal": 44.4 },
+                    { "state": "Andhra Pradesh", "actual": 63.1, "normal": 42.8 }
+                ],
+                "districtRainfall": [
+                    { "location": "B Kothagudem", "actual": 43.9, "normal": 49.7 },
+                    { "location": "Mulugu", "actual": 27.4, "normal": 45.1 },
+                    { "location": "J Gadwal", "actual": 29.2, "normal": 31.4 },
+                    { "location": "ASR", "actual": 98.6, "normal": 57.9 },
+                    { "location": "Guntur", "actual": 46.2, "normal": 50.1 },
+                    { "location": "Krishna", "actual": 28.2, "normal": 54.7 },
+                    { "location": "Prakasam", "actual": 44.8, "normal": 32.5 },
+                    { "location": "Kurnool", "actual": 37.0, "normal": 35.9 }
+                ],
+                "reservoirs": [
+                    { "name": "Almatti", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 129.72, "level": 1702.79, "storage": 117.77 },
+                    { "name": "Narayanapur", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 37.64, "level": 1610.1, "storage": 31.09 },
+                    { "name": "Jurala", "basin": "Krishna", "region": "Jogulamba Gadwal (Pallepadu)", "capacity": 9.66, "level": 1044.23, "storage": 9.17 },
+                    { "name": "Tungabhadra", "basin": "Krishna", "region": "Raichur & Kurnool", "capacity": 105.79, "level": 1625.28, "storage": 77.41 },
+                    { "name": "Srisailam", "basin": "Krishna", "region": "Rayalaseema", "capacity": 215.81, "level": 856.4, "storage": 95.59 },
+                    { "name": "Nagarjuna Sagar", "basin": "Krishna", "region": "Guntur, Prakasam & Khammam", "capacity": 312.05, "level": 535.6, "storage": 179.29 },
+                    { "name": "Sri Ram Sagar", "basin": "Godavari", "region": "Warangal, Jagitial & Khammam (CP, DV, WZ)", "capacity": 80.5, "level": 1080.5, "storage": 46.36 }
+                ],
+                "basins": [
+                    { "name": "Godavari Basin", "capacity": 26.74, "ly": "18.00", "current": 22.0 },
+                    { "name": "Krishna Basin", "capacity": 695.5, "ly": "650.00", "current": 360.0 }
+                ]
+            },
+            "week_24_09_2026": {
+                "label": "24-09 to 30-09-2026",
+                "stateRainfall": [
+                    { "state": "Telangana", "actual": 46.5, "normal": 32.2 },
+                    { "state": "Andhra Pradesh", "actual": 61.8, "normal": 36.5 }
+                ],
+                "districtRainfall": [
+                    { "location": "B Kothagudem", "actual": 84.6, "normal": 30.7 },
+                    { "location": "Mulugu", "actual": 71.9, "normal": 26.7 },
+                    { "location": "J Gadwal", "actual": 18.2, "normal": 30.0 },
+                    { "location": "ASR", "actual": 186.1, "normal": 32.5 },
+                    { "location": "Guntur", "actual": 161.6, "normal": 31.8 },
+                    { "location": "Krishna", "actual": 191.4, "normal": 41.0 },
+                    { "location": "Prakasam", "actual": 25.5, "normal": 36.3 },
+                    { "location": "Kurnool", "actual": 20.3, "normal": 33.2 }
+                ],
+                "reservoirs": [
+                    { "name": "Almatti", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 129.72, "level": 1701.21, "storage": 109.81 },
+                    { "name": "Narayanapur", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 37.64, "level": 1611.15, "storage": 32.43 },
+                    { "name": "Jurala", "basin": "Krishna", "region": "Jogulamba Gadwal (Pallepadu)", "capacity": 9.66, "level": 1043.93, "storage": 8.99 },
+                    { "name": "Tungabhadra", "basin": "Krishna", "region": "Raichur & Kurnool", "capacity": 105.79, "level": 1623.56, "storage": 71.87 },
+                    { "name": "Srisailam", "basin": "Krishna", "region": "Rayalaseema", "capacity": 215.81, "level": 853.3, "storage": 87.45 },
+                    { "name": "Nagarjuna Sagar", "basin": "Krishna", "region": "Guntur, Prakasam & Khammam", "capacity": 312.05, "level": 536.7, "storage": 181.52 },
+                    { "name": "Sri Ram Sagar", "basin": "Godavari", "region": "Warangal, Jagitial & Khammam (CP, DV, WZ)", "capacity": 80.5, "level": 1080.5, "storage": 46.36 }
+                ],
+                "basins": [
+                    { "name": "Godavari Basin", "capacity": 26.74, "ly": "19.10", "current": 23.5 },
+                    { "name": "Krishna Basin", "capacity": 695.5, "ly": "660.12", "current": 391.2 },
+                    { "name": "Pennar Basin", "capacity": 295.46, "ly": "250.00", "current": 120.4 },
+                    { "name": "Others", "capacity": 89.81, "ly": "63.00", "current": 51.1 }
+                ]
+            },
+            "week_01_10_2026": {
+                "label": "01-10 to 07-10-2026",
+                "stateRainfall": [
+                    { "state": "Telangana", "actual": 0.2, "normal": 33.1 },
+                    { "state": "Andhra Pradesh", "actual": 9.3, "normal": 45.4 }
+                ],
+                "districtRainfall": [
+                    { "location": "B Kothagudem", "actual": 1.8, "normal": 36.5 },
+                    { "location": "Mulugu", "actual": 2.0, "normal": 32.6 },
+                    { "location": "J Gadwal", "actual": 0.0, "normal": 34.8 },
+                    { "location": "ASR", "actual": 2.5, "normal": 53.9 },
+                    { "location": "Guntur", "actual": 5.4, "normal": 38.3 },
+                    { "location": "Krishna", "actual": 1.1, "normal": 48.3 },
+                    { "location": "Prakasam", "actual": 5.6, "normal": 40.6 },
+                    { "location": "Kurnool", "actual": 0.0, "normal": 41.2 }
+                ],
+                "reservoirs": [
+                    { "name": "Almatti", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 129.72, "level": 1699.93, "storage": 99.76 },
+                    { "name": "Narayanapur", "basin": "Krishna", "region": "Northern Karnataka", "capacity": 37.64, "level": 1612.27, "storage": 29.57 },
+                    { "name": "Jurala", "basin": "Krishna", "region": "Jogulamba Gadwal (Pallepadu)", "capacity": 9.66, "level": 1042.19, "storage": 7.95 },
+                    { "name": "Tungabhadra", "basin": "Krishna", "region": "Raichur & Kurnool", "capacity": 105.79, "level": 1620.89, "storage": 63.85 },
+                    { "name": "Srisailam", "basin": "Krishna", "region": "Rayalaseema", "capacity": 215.81, "level": 846.0, "storage": 71.9 },
+                    { "name": "Nagarjuna Sagar", "basin": "Krishna", "region": "Guntur, Prakasam & Khammam", "capacity": 312.05, "level": 539.9, "storage": 187.91 },
+                    { "name": "Sri Ram Sagar", "basin": "Godavari", "region": "Warangal, Jagitial & Khammam (CP, DV, WZ)", "capacity": 80.5, "level": 1080.3, "storage": 45.76 }
+                ],
+                "basins": [
+                    { "name": "Godavari Basin", "capacity": 26.74, "ly": "18.52", "current": 22.1 },
+                    { "name": "Krishna Basin", "capacity": 695.5, "ly": "659.08", "current": 362.6 },
+                    { "name": "Pennar Basin", "capacity": 295.46, "ly": "247.57", "current": 112.14 },
+                    { "name": "Others", "capacity": 89.81, "ly": "61.70", "current": 48.26 }
+                ]
+            }
+        };
+
+        let historicalData = rawExcelDataset;
+        localStorage.setItem('waterDashboardData', JSON.stringify(rawExcelDataset));
+
+        let currentWeekKey = 'week_01_10_2026';
+        let currentTheme = localStorage.getItem('waterDashboardTheme') || 'navy';
+        let resChart = null;
+        let rainChart = null;
+        let customRainChart = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            changeTheme(currentTheme);
+            populateWeekDropdowns();
+            populateCustomFilterDropdowns();
+            switchWeek(currentWeekKey);
+        });
+
+        function saveData() {
+            localStorage.setItem('waterDashboardData', JSON.stringify(historicalData));
+            localStorage.setItem('waterDashboardActiveWeek', currentWeekKey);
+        }
+
+        function resetToExcelData() {
+            historicalData = rawExcelDataset;
+            currentWeekKey = 'week_01_10_2026';
+            saveData();
+            populateWeekDropdowns();
+            populateCustomFilterDropdowns();
+            switchWeek(currentWeekKey);
+            alert("Dashboard reloaded with exact Excel file data!");
+        }
+
+        function saveDashboardFile() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(historicalData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Water_Dashboard_2026_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function loadDashboardFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed && typeof parsed === 'object') {
+                        historicalData = parsed;
+                        currentWeekKey = Object.keys(historicalData)[0];
+                        saveData();
+                        populateWeekDropdowns();
+                        populateCustomFilterDropdowns();
+                        switchWeek(currentWeekKey);
+                        alert("Dashboard project loaded successfully!");
+                    } else {
+                        alert("Invalid file format.");
+                    }
+                } catch (err) {
+                    alert("Error reading file: " + err);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function changeTheme(themeName) {
+            currentTheme = themeName;
+            localStorage.setItem('waterDashboardTheme', themeName);
+            document.getElementById('themeSelector').value = themeName;
+            const body = document.getElementById('appBody');
+            body.className = "bg-theme-bg text-theme-text font-sans antialiased min-h-screen transition-colors duration-200 flex flex-col justify-between";
+            if (themeName !== 'navy') body.classList.add(`theme-${themeName}`);
+            if (themeName === 'dark') document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+            if (historicalData[currentWeekKey]) updateCharts(historicalData[currentWeekKey]);
+        }
+
+        function getOrderedWeekKeys() {
+            return Object.keys(historicalData).sort((a, b) => {
+                const getParsedDate = (key) => {
+                    const label = historicalData[key].label;
+                    const match = label.match(/(\d{2})-(\d{2})-(\d{4})/);
+                    if (match) {
+                        return new Date(`${match[3]}-${match[2]}-${match[1]}`).getTime();
+                    }
+                    return 0;
+                };
+                return getParsedDate(a) - getParsedDate(b);
+            });
+        }
+
+        function populateWeekDropdowns() {
+            const selector = document.getElementById('weekSelector');
+            const copySelector = document.getElementById('copyFromWeekSelect');
+            if (!selector || !copySelector) return;
+            selector.innerHTML = '';
+            copySelector.innerHTML = '<option value="none">Blank Structure</option>';
+
+            const orderedKeys = getOrderedWeekKeys();
+            orderedKeys.forEach(key => {
+                const label = historicalData[key].label;
+                const opt1 = document.createElement('option');
+                opt1.value = key; opt1.innerText = label; opt1.className = 'text-slate-800';
+                selector.appendChild(opt1);
+                const opt2 = document.createElement('option');
+                opt2.value = key; opt2.innerText = label;
+                copySelector.appendChild(opt2);
+            });
+            if (historicalData[currentWeekKey]) selector.value = currentWeekKey;
+        }
+
+        function populateCustomFilterDropdowns() {
+            const fromSel = document.getElementById('customFromWeek');
+            const toSel = document.getElementById('customToWeek');
+            if (!fromSel || !toSel) return;
+            
+            const currentFrom = fromSel.value;
+            const currentTo = toSel.value;
+
+            fromSel.innerHTML = '';
+            toSel.innerHTML = '';
+
+            const orderedKeys = getOrderedWeekKeys();
+            orderedKeys.forEach((key) => {
+                const label = historicalData[key].label;
+                fromSel.innerHTML += `<option value="${key}">${label}</option>`;
+                toSel.innerHTML += `<option value="${key}">${label}</option>`;
+            });
+
+            if (orderedKeys.length > 0) {
+                fromSel.value = orderedKeys.includes(currentFrom) ? currentFrom : orderedKeys[0];
+                toSel.value = orderedKeys.includes(currentTo) ? currentTo : orderedKeys[orderedKeys.length - 1];
+            }
+            populateLocationCheckboxes();
+        }
+
+        function populateLocationCheckboxes() {
+            const container = document.getElementById('locationCheckboxes');
+            if (!container) return;
+
+            const checkedLocs = Array.from(container.querySelectorAll('input:checked')).map(cb => cb.value);
+
+            container.innerHTML = '';
+            const locationsSet = new Set();
+            
+            Object.values(historicalData).forEach(week => {
+                if (week.stateRainfall) week.stateRainfall.forEach(s => locationsSet.add(s.state));
+                if (week.districtRainfall) week.districtRainfall.forEach(d => locationsSet.add(d.location));
+            });
+
+            let index = 0;
+            locationsSet.forEach((loc) => {
+                const isChecked = checkedLocs.length > 0 ? checkedLocs.includes(loc) : (index < 3);
+                container.innerHTML += `
+                    <label class="flex items-center space-x-1.5 cursor-pointer mr-2">
+                        <input type="checkbox" value="${loc}" ${isChecked ? 'checked' : ''} onchange="updateCustomChart()" class="custom-loc-checkbox rounded text-theme-accent focus:ring-0">
+                        <span class="font-medium">${loc}</span>
+                    </label>`;
+                index++;
+            });
+            updateCustomChart();
+        }
+
+        function switchWeek(weekKey) {
+            currentWeekKey = historicalData[weekKey] ? weekKey : Object.keys(historicalData)[0];
+            saveData();
+            const weekSelector = document.getElementById('weekSelector');
+            if (weekSelector) weekSelector.value = currentWeekKey;
+            renderCurrentWeek();
+        }
+
+        function deleteCurrentWeek() {
+            const keys = Object.keys(historicalData);
+            if (keys.length <= 1) {
+                alert("Cannot delete the last remaining week.");
+                return;
+            }
+            const weekLabel = historicalData[currentWeekKey].label;
+            if (confirm(`Are you sure you want to delete the weekly report: "${weekLabel}"?`)) {
+                delete historicalData[currentWeekKey];
+                currentWeekKey = Object.keys(historicalData)[0];
+                saveData();
+                populateWeekDropdowns();
+                populateCustomFilterDropdowns();
+                switchWeek(currentWeekKey);
+            }
+        }
+
+        function getRainCategory(dep) {
+            if (dep >= 60) return { label: 'Large Excess', bg: 'bg-blue-600', text: 'text-white', hex: '#2563eb' };
+            if (dep >= 20) return { label: 'Excess', bg: 'bg-sky-400', text: 'text-slate-900', hex: '#38bdf8' };
+            if (dep >= -19) return { label: 'Normal', bg: 'bg-emerald-500', text: 'text-white', hex: '#22c55e' };
+            if (dep >= -59) return { label: 'Deficient', bg: 'bg-red-600', text: 'text-white', hex: '#dc2626' };
+            return { label: 'Large Deficient', bg: 'bg-yellow-300', text: 'text-slate-900', hex: '#fde047' };
+        }
+
+        function getBasinStatus(pct) {
+            if (pct >= 60) return { label: 'Satisfactory', bg: 'bg-emerald-100', text: 'text-emerald-800', hex: '#22c55e' };
+            if (pct >= 40) return { label: 'Moderate', bg: 'bg-yellow-100', text: 'text-yellow-800', hex: '#eab308' };
+            if (pct >= 20) return { label: 'Deficient', bg: 'bg-orange-100', text: 'text-orange-800', hex: '#f97316' };
+            return { label: 'Critical', bg: 'bg-rose-100', text: 'text-rose-800', hex: '#f43f5e' };
+        }
+
+        function renderCurrentWeek() {
+            const data = historicalData[currentWeekKey];
+            if (!data) return;
+
+            document.querySelectorAll('.activeWeekText').forEach(el => el.innerText = data.label);
+            const kpiWeekLabel = document.getElementById('kpiWeekLabel');
+            if (kpiWeekLabel) kpiWeekLabel.innerText = data.label;
+
+            const tg = data.stateRainfall.find(s => s.state === 'Telangana') || { actual: 0, normal: 0 };
+            const ap = data.stateRainfall.find(s => s.state === 'Andhra Pradesh') || { actual: 0, normal: 0 };
+            const tgDep = tg.normal > 0 ? Math.round(((tg.actual - tg.normal) / tg.normal) * 100) : 0;
+            const apDep = ap.normal > 0 ? Math.round(((ap.actual - ap.normal) / ap.normal) * 100) : 0;
+
+            const kpiTgRain = document.getElementById('kpiTgRain');
+            if (kpiTgRain) kpiTgRain.innerText = `${tg.actual} mm`;
+            const kpiTgDep = document.getElementById('kpiTgDep');
+            if (kpiTgDep) kpiTgDep.innerText = `${tgDep >= 0 ? '+' : ''}${tgDep}% Dep`;
+            updateKpiBadge('kpiTgBadge', tgDep);
+
+            const kpiApRain = document.getElementById('kpiApRain');
+            if (kpiApRain) kpiApRain.innerText = `${ap.actual} mm`;
+            const kpiApDep = document.getElementById('kpiApDep');
+            if (kpiApDep) kpiApDep.innerText = `${apDep >= 0 ? '+' : ''}${apDep}% Dep`;
+            updateKpiBadge('kpiApBadge', apDep);
+
+            let totStorage = 0, totCapacity = 0;
+            data.reservoirs.forEach(r => { totStorage += Number(r.storage) || 0; totCapacity += Number(r.capacity) || 0; });
+            const storagePct = totCapacity > 0 ? ((totStorage / totCapacity) * 100).toFixed(1) : 0;
+            const kpiStorage = document.getElementById('kpiStorage');
+            if (kpiStorage) kpiStorage.innerText = `${totStorage.toFixed(2)} TMC`;
+            const kpiStorageSub = document.getElementById('kpiStorageSub');
+            if (kpiStorageSub) kpiStorageSub.innerText = `Out of ${totCapacity.toFixed(2)} TMC (${storagePct}%)`;
+
+            // State Table
+            const stateTable = document.getElementById('stateRainfallTableBody');
+            if (stateTable) {
+                stateTable.innerHTML = '';
+                data.stateRainfall.forEach((s, idx) => {
+                    const dep = s.normal > 0 ? Math.round(((s.actual - s.normal) / s.normal) * 100) : 0;
+                    const cat = getRainCategory(dep);
+                    stateTable.innerHTML += `
+                        <tr class="hover:bg-black/5 transition">
+                            <td class="p-3"><input type="text" value="${s.state}" onchange="updateStateRow(${idx}, 'state', this.value)" class="w-full bg-transparent font-semibold outline-none"></td>
+                            <td class="p-3"><input type="number" step="0.1" value="${s.actual}" onchange="updateStateRow(${idx}, 'actual', this.value)" class="w-24 border border-theme-border bg-transparent rounded px-2 py-1 outline-none"> mm</td>
+                            <td class="p-3"><input type="number" step="0.1" value="${s.normal}" onchange="updateStateRow(${idx}, 'normal', this.value)" class="w-24 border border-theme-border bg-transparent rounded px-2 py-1 outline-none"> mm</td>
+                            <td class="p-3 font-semibold ${dep >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${dep >= 0 ? '+' : ''}${dep}%</td>
+                            <td class="p-3"><span class="px-2.5 py-0.5 rounded text-xs font-semibold ${cat.bg} ${cat.text}">${cat.label}</span></td>
+                            <td class="p-3 text-right"><button onclick="deleteStateRow(${idx})" class="text-rose-500 hover:text-rose-700 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                        </tr>`;
+                });
+            }
+
+            // District Table
+            const distTable = document.getElementById('districtRainfallTableBody');
+            if (distTable) {
+                distTable.innerHTML = '';
+                data.districtRainfall.forEach((d, idx) => {
+                    const dep = d.normal > 0 ? Math.round(((d.actual - d.normal) / d.normal) * 100) : 0;
+                    const cat = getRainCategory(dep);
+                    distTable.innerHTML += `
+                        <tr class="hover:bg-black/5 transition">
+                            <td class="p-3"><input type="text" value="${d.location}" onchange="updateDistrictRow(${idx}, 'location', this.value)" class="w-full bg-transparent font-semibold outline-none"></td>
+                            <td class="p-3"><input type="number" step="0.1" value="${d.actual}" onchange="updateDistrictRow(${idx}, 'actual', this.value)" class="w-24 border border-theme-border bg-transparent rounded px-2 py-1 outline-none"> mm</td>
+                            <td class="p-3"><input type="number" step="0.1" value="${d.normal}" onchange="updateDistrictRow(${idx}, 'normal', this.value)" class="w-24 border border-theme-border bg-transparent rounded px-2 py-1 outline-none"> mm</td>
+                            <td class="p-3 font-semibold ${dep >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${dep >= 0 ? '+' : ''}${dep}%</td>
+                            <td class="p-3"><span class="px-2.5 py-0.5 rounded text-xs font-semibold ${cat.bg} ${cat.text}">${cat.label}</span></td>
+                            <td class="p-3 text-right"><button onclick="deleteDistrictRow(${idx})" class="text-rose-500 hover:text-rose-700 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                        </tr>`;
+                });
+            }
+
+            // Reservoirs Table
+            const resTable = document.getElementById('reservoirTableBody');
+            if (resTable) {
+                resTable.innerHTML = '';
+                data.reservoirs.forEach((res, idx) => {
+                    const pct = res.capacity > 0 ? ((res.storage / res.capacity) * 100).toFixed(1) : 0;
+                    resTable.innerHTML += `
+                        <tr class="hover:bg-black/5 transition">
+                            <td class="p-3"><input type="text" value="${res.name}" onchange="updateResRow(${idx}, 'name', this.value)" class="w-full bg-transparent font-semibold outline-none"></td>
+                            <td class="p-3">
+                                <select onchange="updateResRow(${idx}, 'basin', this.value)" class="bg-transparent border border-theme-border rounded px-1.5 py-1 text-xs outline-none text-theme-text">
+                                    <option value="Krishna" ${res.basin === 'Krishna' ? 'selected' : ''} class="text-slate-800">Krishna</option>
+                                    <option value="Godavari" ${res.basin === 'Godavari' ? 'selected' : ''} class="text-slate-800">Godavari</option>
+                                </select>
+                            </td>
+                            <td class="p-3"><input type="text" value="${res.region || 'Command Area'}" onchange="updateResRow(${idx}, 'region', this.value)" class="w-full bg-transparent text-xs opacity-90 outline-none font-medium"></td>
+                            <td class="p-3"><input type="number" step="0.01" value="${res.capacity}" onchange="updateResRow(${idx}, 'capacity', this.value)" class="w-20 border border-theme-border bg-transparent rounded px-2 py-1 outline-none"> TMC</td>
+                            <td class="p-3"><input type="number" step="0.01" value="${res.level}" onchange="updateResRow(${idx}, 'level', this.value)" class="w-24 border border-theme-border bg-transparent rounded px-2 py-1 outline-none"> ft</td>
+                            <td class="p-3"><input type="number" step="0.01" value="${res.storage}" onchange="updateResRow(${idx}, 'storage', this.value)" class="w-24 border border-theme-border bg-transparent rounded px-2 py-1 font-semibold outline-none"> TMC</td>
+                            <td class="p-3">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs font-semibold w-10">${pct}%</span>
+                                    <div class="w-20 bg-black/10 h-2 rounded-full overflow-hidden">
+                                        <div class="bg-blue-500 h-full rounded-full" style="width: ${Math.min(pct, 100)}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-3 text-right"><button onclick="deleteResRow(${idx})" class="text-rose-500 hover:text-rose-700 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                        </tr>`;
+                });
+            }
+
+            // Basin Table
+            const basinTable = document.getElementById('basinTableBody');
+            if (basinTable) {
+                basinTable.innerHTML = '';
+                data.basins.forEach((b, idx) => {
+                    const fillPct = b.capacity > 0 ? ((b.current / b.capacity) * 100).toFixed(1) : 0;
+                    const status = getBasinStatus(fillPct);
+                    basinTable.innerHTML += `
+                        <tr class="hover:bg-black/5 transition">
+                            <td class="p-3"><input type="text" value="${b.name}" onchange="updateBasinRow(${idx}, 'name', this.value)" class="w-full bg-transparent font-semibold outline-none"></td>
+                            <td class="p-3"><input type="number" step="0.01" value="${b.capacity}" onchange="updateBasinRow(${idx}, 'capacity', this.value)" class="w-24 border border-theme-border bg-transparent rounded px-2 py-1 outline-none"> TMC</td>
+                            <td class="p-3"><input type="text" value="${b.ly}" onchange="updateBasinRow(${idx}, 'ly', this.value)" class="w-24 border border-theme-border bg-transparent rounded px-2 py-1 outline-none"> TMC</td>
+                            <td class="p-3"><input type="number" step="0.1" value="${b.current}" onchange="updateBasinRow(${idx}, 'current', this.value)" class="w-24 border border-theme-border bg-transparent rounded px-2 py-1 font-semibold outline-none"> TMC</td>
+                            <td class="p-3 font-semibold">${fillPct}%</td>
+                            <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${status.bg} ${status.text}">${status.label}</span></td>
+                            <td class="p-3 text-right"><button onclick="deleteBasinRow(${idx})" class="text-rose-500 hover:text-rose-700 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                        </tr>`;
+                });
+            }
+
+            lucide.createIcons();
+            updateCharts(data);
+            updateCustomChart();
+        }
+
+        function updateKpiBadge(id, dep) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const cat = getRainCategory(dep);
+            el.innerText = cat.label;
+            el.className = `px-2 py-0.5 text-[10px] rounded-full font-bold ${cat.bg} ${cat.text}`;
+        }
+
+        function updateStateRow(i, f, v) { historicalData[currentWeekKey].stateRainfall[i][f] = f === 'state' ? v : (parseFloat(v) || 0); saveData(); renderCurrentWeek(); populateLocationCheckboxes(); }
+        function addStateRow() { historicalData[currentWeekKey].stateRainfall.push({ state: "New State", actual: 0.0, normal: 35.0 }); saveData(); renderCurrentWeek(); populateLocationCheckboxes(); }
+        function deleteStateRow(i) { historicalData[currentWeekKey].stateRainfall.splice(i, 1); saveData(); renderCurrentWeek(); populateLocationCheckboxes(); }
+
+        function updateDistrictRow(i, f, v) { historicalData[currentWeekKey].districtRainfall[i][f] = f === 'location' ? v : parseFloat(v) || 0; saveData(); renderCurrentWeek(); populateLocationCheckboxes(); }
+        function deleteDistrictRow(i) { historicalData[currentWeekKey].districtRainfall.splice(i, 1); saveData(); renderCurrentWeek(); populateLocationCheckboxes(); }
+        function addDistrictRow() { historicalData[currentWeekKey].districtRainfall.push({ location: "New District", actual: 0.0, normal: 30.0 }); saveData(); renderCurrentWeek(); populateLocationCheckboxes(); }
+        
+        function updateResRow(i, f, v) { historicalData[currentWeekKey].reservoirs[i][f] = (f === 'name' || f === 'basin' || f === 'region') ? v : parseFloat(v) || 0; saveData(); renderCurrentWeek(); }
+        function deleteResRow(i) { historicalData[currentWeekKey].reservoirs.splice(i, 1); saveData(); renderCurrentWeek(); }
+        function addReservoirRow() { historicalData[currentWeekKey].reservoirs.push({ name: "New Reservoir", basin: "Krishna", region: "Command Area", capacity: 100.0, level: 1000.0, storage: 50.0 }); saveData(); renderCurrentWeek(); }
+        
+        function updateBasinRow(i, f, v) { historicalData[currentWeekKey].basins[i][f] = (f === 'name' || f === 'ly') ? v : (parseFloat(v) || 0); saveData(); renderCurrentWeek(); }
+        function addBasinRow() { historicalData[currentWeekKey].basins.push({ name: "New Basin", capacity: 100.0, ly: "50.0", current: 25.0 }); saveData(); renderCurrentWeek(); }
+        function deleteBasinRow(i) { historicalData[currentWeekKey].basins.splice(i, 1); saveData(); renderCurrentWeek(); }
+
+        function updateCharts(data) {
+            const resColors = data.reservoirs.map(r => {
+                const pct = r.capacity > 0 ? (r.storage / r.capacity) * 100 : 0;
+                return getBasinStatus(pct).hex;
+            });
+
+            const resCanvas = document.getElementById('reservoirChart');
+            if (resCanvas) {
+                const resCtx = resCanvas.getContext('2d');
+                if (resChart) resChart.destroy();
+                resChart = new Chart(resCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.reservoirs.map(r => r.name),
+                        datasets: [{ label: 'Storage Fill (%)', data: data.reservoirs.map(r => r.capacity > 0 ? ((r.storage / r.capacity) * 100).toFixed(1) : 0), backgroundColor: resColors, borderRadius: 6 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+                });
+            }
+
+            const rainColors = data.districtRainfall.map(r => {
+                const dep = r.normal > 0 ? Math.round(((r.actual - r.normal) / r.normal) * 100) : 0;
+                return getRainCategory(dep).hex;
+            });
+
+            const rainCanvas = document.getElementById('rainfallChart');
+            if (rainCanvas) {
+                const rainCtx = rainCanvas.getContext('2d');
+                if (rainChart) rainChart.destroy();
+                const departures = data.districtRainfall.map(r => r.normal > 0 ? Math.round(((r.actual - r.normal) / r.normal) * 100) : 0);
+                rainChart = new Chart(rainCtx, {
+                    data: {
+                        labels: data.districtRainfall.map(r => r.location),
+                        datasets: [
+                            { type: 'line', label: 'Departure % Curve', data: departures, borderColor: '#475569', borderWidth: 2, fill: false, tension: 0.4, yAxisID: 'y1' },
+                            { type: 'bar', label: 'Actual (mm)', data: data.districtRainfall.map(r => r.actual), backgroundColor: rainColors, borderRadius: 4, yAxisID: 'y' },
+                            { type: 'bar', label: 'Normal (mm)', data: data.districtRainfall.map(r => r.normal), backgroundColor: '#94a3b8', borderRadius: 4, yAxisID: 'y' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { type: 'linear', position: 'left', title: { display: true, text: 'Rainfall (mm)' } },
+                            y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Departure (%)' } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateCustomChart() {
+            const fromSelect = document.getElementById('customFromWeek');
+            const toSelect = document.getElementById('customToWeek');
+            const metricSelect = document.getElementById('customMetricSelect');
+            const customCanvas = document.getElementById('customRainfallChart');
+            
+            if (!fromSelect || !toSelect || !metricSelect || !customCanvas) return;
+
+            const fromKey = fromSelect.value;
+            const toKey = toSelect.value;
+            const metric = metricSelect.value;
+            
+            const selectedLocs = [];
+            document.querySelectorAll('.custom-loc-checkbox:checked').forEach(cb => selectedLocs.push(cb.value));
+
+            const orderedKeys = getOrderedWeekKeys();
+            let fromIdx = orderedKeys.indexOf(fromKey);
+            let toIdx = orderedKeys.indexOf(toKey);
+
+            if (fromIdx > toIdx) {
+                const temp = fromIdx;
+                fromIdx = toIdx;
+                toIdx = temp;
+            }
+
+            if (fromIdx === -1 || toIdx === -1) return;
+
+            const activeKeys = orderedKeys.slice(fromIdx, toIdx + 1);
+            const weekLabels = activeKeys.map(k => historicalData[k].label);
+
+            const colorPalette = ['#2563eb', '#059669', '#7c3aed', '#dc2626', '#d97706', '#0891b2', '#4f46e5', '#db2777', '#65a30d'];
+            const datasets = [];
+
+            selectedLocs.forEach((loc, idx) => {
+                const locData = activeKeys.map(k => {
+                    const week = historicalData[k];
+                    let found = week.stateRainfall ? week.stateRainfall.find(s => s.state === loc) : null;
+                    if (!found && week.districtRainfall) {
+                        found = week.districtRainfall.find(d => d.location === loc);
+                    }
+                    if (!found) return 0;
+
+                    if (metric === 'departure') {
+                        return found.normal > 0 ? Math.round(((found.actual - found.normal) / found.normal) * 100) : 0;
+                    } else {
+                        return found.actual;
+                    }
+                });
+
+                datasets.push({
+                    label: loc,
+                    data: locData,
+                    borderColor: colorPalette[idx % colorPalette.length],
+                    backgroundColor: colorPalette[idx % colorPalette.length],
+                    borderWidth: 2.5,
+                    tension: 0.2,
+                    fill: false
+                });
+            });
+
+            const ctx = customCanvas.getContext('2d');
+            if (customRainChart) customRainChart.destroy();
+
+            customRainChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: weekLabels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: metric === 'actual',
+                            title: { display: true, text: metric === 'departure' ? 'Departure (%)' : 'Actual Rainfall (mm)' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Weekly Period' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function switchTab(tabId) {
+            ['overview', 'rainfall', 'reservoirs', 'basins'].forEach(id => {
+                const sec = document.getElementById(`section-${id}`);
+                const tab = document.getElementById(`tab-${id}`);
+                if (sec) sec.classList.add('hidden');
+                if (tab) {
+                    tab.classList.remove('border-theme-accent', 'text-theme-accent');
+                    tab.classList.add('border-transparent', 'opacity-70');
+                }
+            });
+            const targetSec = document.getElementById(`section-${tabId}`);
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetSec) targetSec.classList.remove('hidden');
+            if (targetTab) {
+                targetTab.classList.add('border-theme-accent', 'text-theme-accent');
+                targetTab.classList.remove('border-transparent', 'opacity-70');
+            }
+            if (tabId === 'overview') {
+                updateCustomChart();
+            }
+        }
+
+        function openNewWeekModal() { const m = document.getElementById('newWeekModal'); if (m) m.classList.remove('hidden'); }
+        function closeNewWeekModal() { const m = document.getElementById('newWeekModal'); if (m) m.classList.add('hidden'); }
+        
+        function createNewWeekData() {
+            const nameInputEl = document.getElementById('newWeekNameInput');
+            const copySelectEl = document.getElementById('copyFromWeekSelect');
+            if (!nameInputEl || !copySelectEl) return;
+
+            const nameInput = nameInputEl.value.trim() || 'New Weekly Report';
+            const copyKey = copySelectEl.value;
+            const weekKey = 'week_' + Date.now();
+            let stateRain = [{ state: "Telangana", actual: 0.0, normal: 35.0 }, { state: "Andhra Pradesh", actual: 0.0, normal: 40.0 }];
+            let distRain = [{ location: "District A", actual: 0.0, normal: 30.0 }];
+            let resData = [{ name: "Reservoir A", basin: "Krishna", region: "Command Area", capacity: 100.0, level: 1000.0, storage: 50.0 }];
+
+            if (copyKey !== 'none' && historicalData[copyKey]) {
+                const src = historicalData[copyKey];
+                stateRain = src.stateRainfall.map(s => ({ ...s, actual: 0.0 }));
+                distRain = src.districtRainfall.map(d => ({ ...d, actual: 0.0 }));
+                resData = src.reservoirs.map(r => ({ ...r, storage: 0.0, level: 0.0 }));
+            }
+
+            historicalData[weekKey] = { label: nameInput, stateRainfall: stateRain, districtRainfall: distRain, reservoirs: resData, basins: [{ name: "Godavari Basin", capacity: 26.74, ly: "18.52", current: 0.0 }, { name: "Krishna Basin", capacity: 695.50, ly: "659.08", current: 0.0 }] };
+            saveData();
+            populateWeekDropdowns();
+            populateCustomFilterDropdowns();
+            closeNewWeekModal();
+            switchWeek(weekKey);
+        }
+
+        function openEditWeekModal() {
+            const input = document.getElementById('editWeekNameInput');
+            const modal = document.getElementById('editWeekModal');
+            if (input && historicalData[currentWeekKey]) input.value = historicalData[currentWeekKey].label;
+            if (modal) modal.classList.remove('hidden');
+        }
+        function closeEditWeekModal() { const m = document.getElementById('editWeekModal'); if (m) m.classList.add('hidden'); }
+        function saveWeekName() {
+            const input = document.getElementById('editWeekNameInput');
+            if (!input) return;
+            const val = input.value.trim();
+            if (val) { 
+                historicalData[currentWeekKey].label = val; 
+                saveData(); 
+                populateWeekDropdowns(); 
+                populateCustomFilterDropdowns();
+                renderCurrentWeek(); 
+            }
+            closeEditWeekModal();
+        }
+
+        function exportCSV() {
+            const data = historicalData[currentWeekKey];
+            let csv = `WATER RESOURCES REPORT - ${data.label}\n\n`;
+            csv += `STATE RAINFALL SUMMARY\nState,Actual (mm),Normal (mm),Departure (%)\n`;
+            data.stateRainfall.forEach(s => {
+                const dep = s.normal > 0 ? Math.round(((s.actual - s.normal) / s.normal) * 100) : 0;
+                csv += `"${s.state}",${s.actual},${s.normal},${dep}%\n`;
+            });
+            csv += `\nDISTRICT RAINFALL REPORT\nDistrict,Actual (mm),Normal (mm),Departure (%)\n`;
+            data.districtRainfall.forEach(d => {
+                const dep = d.normal > 0 ? Math.round(((d.actual - d.normal) / d.normal) * 100) : 0;
+                csv += `"${d.location}",${d.actual},${d.normal},${dep}%\n`;
+            });
+            csv += `\nMAJOR RESERVOIRS & COMMAND AREA SERVED\nName,Basin,Command Area Served,Capacity (TMC),Level (ft),Storage (TMC),Fill (%)\n`;
+            data.reservoirs.forEach(r => {
+                const pct = r.capacity > 0 ? ((r.storage / r.capacity) * 100).toFixed(1) : 0;
+                csv += `"${r.name}","${r.basin}","${r.region || ''}",${r.capacity},${r.level},${r.storage},${pct}%\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `Water_Report_${data.label.replace(/[^a-z0-9]/gi, '_')}.csv`);
+            a.click();
+        }
+    </script>
+</body>
+</html>
